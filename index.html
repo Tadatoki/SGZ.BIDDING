@@ -1085,6 +1085,7 @@
             <div class="adminActions" style="margin-top:10px">
               ${item.status !== "running" ? `<button class="btn compact good" data-action="start" data-id="${item.id}">Start</button>` : `<button class="btn compact warn" data-action="end" data-id="${item.id}">End now</button>`}
               <button class="btn compact secondary" data-action="edit" data-id="${item.id}">Edit</button>
+              ${Array.isArray(item.bids) && item.bids.length ? `<button class="btn compact secondary" data-action="retract" data-id="${item.id}">Retract bid</button>` : ""}
               <button class="btn compact bad" data-action="delete" data-id="${item.id}">Delete</button>
             </div>
           ` : "";
@@ -1285,6 +1286,50 @@
         toast("Auction ended", item.highestBidder ? `Winner: ${item.highestBidder}` : "No bids placed.");
       }
 
+      async function retractLastBid(id){
+        const item = state.items.find(x => x.id === id);
+        if (!item) return;
+        if (!Array.isArray(item.bids) || item.bids.length === 0){
+          toast("No bids to retract");
+          return;
+        }
+        const ok = confirm(`Retract the last bid on "${item.name}"?`);
+        if (!ok) return;
+
+        try{
+          await runTransaction(db, async (tx) => {
+            const ref = doc(db, "items", id);
+            const snap = await tx.get(ref);
+            if (!snap.exists()) throw new Error("Item not found.");
+            const data = snap.data();
+
+            const bids = Array.isArray(data.bids) ? data.bids.slice() : [];
+            if (!bids.length) throw new Error("No bids to retract.");
+
+            // Remove the most recent bid
+            bids.pop();
+
+            let currentBid = Number(data.startingBid || 0);
+            let highestBidder = "";
+            if (bids.length){
+              const last = bids[bids.length - 1];
+              currentBid = Number(last.amount || currentBid);
+              highestBidder = String(last.who || "");
+            }
+
+            tx.update(ref, {
+              bids,
+              currentBid,
+              highestBidder
+            });
+          });
+        }catch(err){
+          toast("Retract failed", String(err?.message || err));
+          return;
+        }
+        toast("Bid retracted");
+      }
+
       async function placeBid(){
         const bidder = getBidderName();
         if (!bidder){
@@ -1396,6 +1441,7 @@
         if (action === "delete") deleteItem(id);
         if (action === "start") startAuction(id);
         if (action === "end") endAuction(id);
+        if (action === "retract") retractLastBid(id);
       });
 
       // Keyboard accessibility for clickable cards

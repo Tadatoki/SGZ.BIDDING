@@ -370,15 +370,13 @@
         display:flex;
         gap: 8px;
         align-items:center;
-        flex-wrap: nowrap;           /* never wrap to next line */
-        overflow-x: auto;            /* scroll horizontally if needed */
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 2px;         /* avoid scrollbar overlay on some UAs */
+        flex-wrap: wrap;
+        width: 100%;
       }
       .adminActions .btn{
-        flex: 0 0 auto;
+        flex: 1 1 calc(50% - 4px);
         white-space: nowrap;
+        text-align:center;
       }
       .btn.compact{
         padding: 9px 10px;
